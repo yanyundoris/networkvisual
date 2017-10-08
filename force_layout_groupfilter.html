@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Force Layout Demo</title>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+</head>
+<style type="text/css">
+    .node {
+        stroke: #fff
+        stroke-width: 1.5px;
+        cursor:pointer;
+    }
+
+    .nodetext {
+        fill: #000;
+        font-size:12px;
+        cursor:pointer;
+        pointer-events:none;
+    }
+</style>
+<body>
+<script type="text/javascript">
+    var width = 1600,
+        height = 1500,
+        radius = 50;
+
+    var threshold = 4;
+
+    var groupFilter =0;
+
+    //取得20个颜色的序列
+    var color = d3.scale.category20();
+
+    //定义画布
+    var svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+    //定义力学结构
+    var force = d3.layout.force()
+        .gravity(5)
+        .charge(-240)
+        .linkDistance(0.5)
+        .size([width, height]);
+    //        .charge(-150)
+    //        .gravity(.05)
+    //        .linkDistance(1)
+    //        .size([width-1500, height-1100]);
+
+
+
+    //读取数据
+    d3.json("graph_courserole.json", function(error, graph) {
+        graph.links.forEach(function (d) {
+
+
+                d.source = parseInt(d.source);
+                d.target = parseInt(d.target);
+                d.value = parseInt(d.value);
+
+        });
+
+        graph.nodes.forEach(function(d){
+
+                d.id= parseInt(d.id)
+                d.group= parseInt(d.group);
+
+        });
+
+        force
+            .nodes(graph.nodes)
+            .links(graph.links)
+            .start();
+
+
+        graph.nodes.forEach(function(d){
+            d.value = 0;
+        });
+
+        /*
+         for (var i = 0; i < graph.nodes.length; ++i) {
+         var d = graph.nodes[i];
+         d.value = 0;
+         }
+         */
+
+
+
+        graph.links.forEach(function(d){
+            console.log(d);
+            d.source.value += 1;
+            d.target.value += 1;
+        });
+
+        /*
+         svg.selectAll(...)
+         .data()
+         .enter()
+         .append("line")
+         .attr(...)
+         .style(...);
+         */
+        /*
+
+         svg.selectAll(...)
+         .data()
+         .select("line")
+         .transition()
+         .attr(...)
+         .style(...)
+         .remove();
+
+         /*
+         svg.selectAll(...)
+         .data()
+         .enter()
+         .append("line")
+         .attr(...)
+         .style(...);
+
+         */
+
+        /*
+         svg.selectAll(...)
+         .data()
+         .enter()
+         .append("line")
+         .attr(...)
+         .style(...)
+         .on("mouseover", function(d){
+         })
+         .on("click", function(d){
+         });
+         */
+
+        //定义连线
+        var link = svg.selectAll(".link")
+            .data(graph.links)
+            .enter()
+            .append("line")
+            .attr("class", "link")
+            .attr("stroke","#09F")
+            .attr("stroke-opacity","0.4")
+            .style("stroke-width",1)
+            //            .attr("class", "node")
+            .style("display", function(d){
+                if (d.source.value > threshold & d.target.value >threshold & d.source.group ==groupFilter & d.target.group == groupFilter ) {
+                    return "block";
+                }
+                else {
+                    return "none";
+                }
+            })
+            .style("display", function(d){
+                if (d.source.group ==groupFilter & d.target.group == groupFilter & d.source.value > threshold & d.target.value >threshold ) {
+                    return "block";
+                }
+                else {
+                    return "none";
+                }
+            });
+        //.style("stoke-height",20);
+
+
+
+//        link.append("line")
+//            .attr("class", "node")
+//            .style("display", function(d){
+//                if (d.source.value > 10) {
+//                    return "none";
+//                }
+//                else {
+//                    return "none";
+//                }
+//            });
+
+        //定义节点标记
+        var node = svg.selectAll(".node")
+            .data(graph.nodes)
+            .enter()
+            .append("g")
+            .call(force.drag);
+
+        //节点圆形标记
+        node.append("circle")
+            .attr("class", "node")
+            .attr("r",function(d){return 4 + d.value;})
+            .style("fill", function(d) { return color(d.group); })
+            .style("opacity", function(d){
+                return Math.min(d.value / 5, 0.8) + 0.2;
+            })
+            .style("display", function(d){
+                if (d.value > threshold & d.group ==groupFilter) {
+                    return "block";
+                }
+                else {
+                    return "none";
+                }
+            });
+
+
+
+
+        //标记鼠标悬停的标签
+        node.append("title")
+            .text(function(d) {
+                if (d.value > threshold & d.group ==groupFilter)
+                    return d.id;
+                else
+                    return "";
+            });
+
+
+
+        //节点上显示的姓名
+        node.append("text")
+            .attr("dy", ".3em")
+            .attr("class","nodetext")
+            .style("text-anchor", "middle")
+            .text(function(d) {
+                if (d.value > threshold & d.group ==groupFilter)
+                    return d.value;
+                else
+                    return "";
+            });
+
+
+
+
+
+
+        //开始力学动作
+        force.on("tick", function() {
+
+            node.attr("cx", function(d) { return d.x = Math.max(radius, Math.min(width - radius, d.x)); })
+                .attr("cy", function(d) { return d.y = Math.max(radius, Math.min(height - radius, d.y)); })
+                .attr("transform", function(d){ return "translate("+d.x+"," + d.y + ")";});
+
+
+            link.attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
+
+
+            // node.attr("transform", function(d){ return "translate("+d.x+"," + d.y + ")";});
+        });
+    });
+
+</script>
+</body>
+</html>
